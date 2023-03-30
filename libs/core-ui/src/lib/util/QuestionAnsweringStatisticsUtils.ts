@@ -15,21 +15,34 @@ export enum QuestionAnsweringMetrics {
   F1Score = "f1Score"
 }
 
-function getf1Score(actual: string[], predicted: string[]): number {
-  const truePositives = actual.filter((value) =>
-    predicted.includes(value)
-  ).length;
-  const falsePositives = predicted.filter(
-    (value) => !actual.includes(value)
-  ).length;
-  const falseNegatives = actual.filter(
-    (value) => !predicted.includes(value)
-  ).length;
+function calculatef1Score(actual: string[], predicted: string[]): number {
+  let sum = 0;
+  for (const [i] of actual.entries()) {
+    const actualTokens = actual[i].split(" ");
+    const predTokens = predicted[i].split(" ");
+    const truePositives = actualTokens.filter((value) =>
+      predTokens.includes(value)
+    ).length;
+    const falsePositives = predTokens.filter(
+      (value) => !actualTokens.includes(value)
+    ).length;
+    const falseNegatives = actualTokens.filter(
+      (value) => !predTokens.includes(value)
+    ).length;
 
-  const precision = truePositives / (truePositives + falsePositives);
-  const recall = truePositives / (truePositives + falseNegatives);
-
-  return 2 * ((precision * recall) / (precision + recall));
+    let precision = 0;
+    let recall = 0;
+    if (truePositives !== 0 || falsePositives !== 0) {
+      precision = truePositives / (truePositives + falsePositives);
+    }
+    if (truePositives !== 0 || falseNegatives !== 0) {
+      recall = truePositives / (truePositives + falseNegatives);
+    }
+    if (precision !== 0 || recall !== 0) {
+      sum = sum + 2 * ((precision * recall) / (precision + recall));
+    }
+  }
+  return sum / actual.length;
 }
 
 export const generateQuestionAnsweringStats: (
@@ -61,10 +74,7 @@ export const generateQuestionAnsweringStats: (
     const sum = matchingLabels.reduce((prev, curr) => prev + curr, 0);
     const exactMatchRatio = sum / selectionArray.length;
 
-    const f1Score = getf1Score(
-      jointDataset.unwrap(JointDataset.TrueYLabel),
-      jointDataset.unwrap(JointDataset.PredictedYLabel)
-    );
+    const f1Score = calculatef1Score(trueYs, predYs);
 
     return [
       {
