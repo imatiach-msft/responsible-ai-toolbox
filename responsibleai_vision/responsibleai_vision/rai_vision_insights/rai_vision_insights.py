@@ -14,6 +14,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
+import cv2
 import matplotlib.pyplot as pl
 import numpy as np
 import pandas as pd
@@ -640,6 +641,17 @@ class RAIVisionInsights(RAIBaseInsights):
             axes.get_xaxis().set_visible(False)
             axes.get_yaxis().set_visible(False)
 
+            # TODO: remove condition after drawing bboxes in the frontend
+            if tasktype == ModelTask.OBJECT_DETECTION:
+                num_classes = len(dashboard_dataset.class_names)
+                colors = np.random.uniform(0, 255, size=(num_classes, 3))
+                image = self._draw_bounding_boxes(
+                    image=image,
+                    image_gt=dashboard_dataset.true_y[i],
+                    image_prediction=dashboard_dataset.predicted_y[i],
+                    class_names=dashboard_dataset.class_names,
+                    colors=colors
+                )
             pl.imshow(image)
             # resize image as optimization
             size = pl.gcf().get_size_inches()
@@ -701,6 +713,66 @@ class RAIVisionInsights(RAIBaseInsights):
             formatted_labels.append(object_labels_lst)
 
         return formatted_labels
+
+    def _draw_bounding_boxes(self,
+                             image,
+                             image_gt,
+                             image_prediction,
+                             class_names,
+                             colors):
+        """Annotates the specified image with labels, confidence scores, and
+        ground truth and predicted bounding boxes.
+        :param image: Single image/example.
+        :type image: numpy.ndarray
+        :param image_gt: Ground truth labels for the image.
+        :type image_gt: list
+        :param image_prediction: Prediction labels for the image.
+        :type image_prediction: list
+        :param class_names: The class labels in the dataset.
+        :type class_names: list
+        :return: Image augmented with boxes, labels, and confidence scores.
+        :rtype: numpy.ndarray
+        """
+        pred_boxes, pred_labels, pred_scores = [], [], []
+        for object_prediction in image_prediction:
+            pred_labels.append(int(object_prediction[0]))
+            pred_boxes.append(object_prediction[1:5])
+            pred_scores.append(object_prediction[-1])
+        label_classes = [class_names[label_idx-1] for label_idx in pred_labels]
+        gt_boxes, gt_labels = [], []
+        for object_gt in image_gt:
+            gt_labels.append(int(object_gt[0]))
+            gt_boxes.append(object_gt[1:5])
+        # ground truth bounding boxes
+        for gt_box in gt_boxes:
+            # TODO: replace with pointer to yellow in Fluent UI
+            color = (255, 255, 0)  # yellow in RGB
+            cv2.rectangle(
+                image,
+                (int(gt_box[0]), int(gt_box[1])),
+                (int(gt_box[2]), int(gt_box[3])),
+                color, thickness=2
+            )
+        # predicted bounding boxes & annotations
+        for k, pred_box in enumerate(pred_boxes):
+            color = tuple(colors[pred_labels[k]-1])
+            cv2.rectangle(
+                image,
+                (int(pred_box[0]), int(pred_box[1])),
+                (int(pred_box[2]), int(pred_box[3])),
+                color, thickness=3
+            )
+            label_text = str(k) + ". " + label_classes[k] + ' (' \
+                + str(round(pred_scores[k] * 100)) + '%)'
+            cv2.putText(image, label_text, (int(pred_box[0]),
+                                            int(pred_box[1]-5)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 4,
+                        lineType=cv2.LINE_AA)
+            cv2.putText(image, label_text, (int(pred_box[0]),
+                                            int(pred_box[1]-5)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2,
+                        lineType=cv2.LINE_AA)
+        return image
 
     def _convert_images(self, dataset):
         """Converts the images to the format required by the model.
