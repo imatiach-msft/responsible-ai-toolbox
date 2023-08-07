@@ -286,7 +286,8 @@ class ExplainerManager(BaseManager):
                 if object_index is None:
                     return fl
                 b64_string = fl[object_index]
-            except BaseException:
+            except BaseException as be:
+                raise be
                 if object_index is None:
                     return [self._get_fail_str()]
                 b64_string = self._get_fail_str()
