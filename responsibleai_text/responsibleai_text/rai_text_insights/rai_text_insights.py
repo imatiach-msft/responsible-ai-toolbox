@@ -14,6 +14,7 @@ from typing import Any, List, Optional, Union
 import numpy as np
 import pandas as pd
 from ml_wrappers import wrap_model
+from ml_wrappers.common.constants import Device
 
 from erroranalysis._internal.cohort_filter import FilterDataWithCohortFilters
 from raiutils.data_processing import convert_to_list, serialize_json_safe
@@ -40,6 +41,7 @@ except ImportError:
     module_logger.debug(
         'Could not import evaluate, required if using a QA model')
 
+_DEVICE = 'device'
 _PREDICTIONS = 'predictions'
 _PREDICT_OUTPUT = 'predict_output'
 _TEST = 'test'
@@ -116,7 +118,8 @@ class RAITextInsights(RAIBaseInsights):
                  serializer: Optional[Any] = None,
                  maximum_rows_for_test: int = 5000,
                  feature_metadata: Optional[FeatureMetadata] = None,
-                 text_column: Optional[Union[str, List]] = None):
+                 text_column: Optional[Union[str, List]] = None,
+                 device: Optional[str] = Device.AUTO.value):
         """Creates an RAITextInsights object.
 
         :param model: The model to compute RAI insights for.
@@ -159,7 +162,11 @@ class RAITextInsights(RAIBaseInsights):
             task_type, feature_metadata)
         self._text_column = text_column
         self._feature_metadata = feature_metadata
-        self._wrapped_model = wrap_model(model, test, task_type)
+        if device is None:
+            device = Device.AUTO.value
+        self.device = device
+        self._wrapped_model = wrap_model(
+            model, test, task_type, device=device)
         self._validate_rai_insights_input_parameters(
             model=self._wrapped_model, test=test,
             target_column=target_column, task_type=task_type,
@@ -663,7 +670,8 @@ class RAITextInsights(RAIBaseInsights):
             _TASK_TYPE: self.task_type,
             _CLASSES: classes,
             _FEATURE_METADATA: feature_metadata_dict,
-            _TEXT_COLUMN: self._text_column
+            _TEXT_COLUMN: self._text_column,
+            _DEVICE: self.device
         }
         with open(top_dir / _META_JSON, 'w') as file:
             json.dump(meta, file)
