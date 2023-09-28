@@ -155,6 +155,22 @@ export class TableList extends React.Component<
 
   public render(): React.ReactNode {
     const classNames = visionExplanationDashboardStyles();
+
+    // Calculate the index of the first and last items for the current page
+    const indexOfLastItem = this.state.currentPage * this.state.itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - this.state.itemsPerPage;
+
+    // Slice the items array to display only the items for the current page
+    const currentItems = this.state.filteredItems.slice(
+      indexOfFirstItem,
+      indexOfLastItem
+    );
+
+    // Calculate total pages
+    const totalPages = Math.ceil(
+      this.state.filteredItems.length / this.state.itemsPerPage
+    );
+
     return (
       <FocusZone className={classNames.tableListContainer}>
         <Stack id="tabsViewTableList">
@@ -162,7 +178,7 @@ export class TableList extends React.Component<
             <MarqueeSelection selection={this._selection}>
               <DetailsList
                 key={this.props.searchValue}
-                items={this.state.filteredItems}
+                items={currentItems}
                 groups={this.state.filteredGroups}
                 columns={this.state.columns}
                 groupProps={{ showEmptyGroups: true }}
@@ -173,6 +189,31 @@ export class TableList extends React.Component<
                 onItemInvoked={this.props.selectItem}
               />
             </MarqueeSelection>
+          </Stack.Item>
+          <Stack.Item>
+            <Stack horizontal tokens={{ childrenGap: "s1" }}>
+              <Stack.Item>
+                <button
+                  onClick={this.handlePreviousPage}
+                  disabled={this.state.currentPage === 1}
+                >
+                  Previous
+                </button>
+              </Stack.Item>
+              <Stack.Item>
+                <span>
+                  Page {this.state.currentPage} of {totalPages}
+                </span>
+              </Stack.Item>
+              <Stack.Item>
+                <button
+                  onClick={this.handleNextPage}
+                  disabled={this.state.currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </Stack.Item>
+            </Stack>
           </Stack.Item>
         </Stack>
       </FocusZone>
@@ -286,6 +327,25 @@ export class TableList extends React.Component<
         )}
       </Stack>
     );
+  };
+
+  private handlePreviousPage = (): void => {
+    if (this.state.currentPage > 1) {
+      this.setState((prevState) => ({
+        currentPage: prevState.currentPage - 1
+      }));
+    }
+  };
+
+  private handleNextPage = (): void => {
+    const totalPages = Math.ceil(
+      this.state.filteredItems.length / this.state.itemsPerPage
+    );
+    if (this.state.currentPage < totalPages) {
+      this.setState((prevState) => ({
+        currentPage: prevState.currentPage + 1
+      }));
+    }
   };
 
   private updateSelection = (): void => {

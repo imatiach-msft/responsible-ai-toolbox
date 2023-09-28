@@ -23,11 +23,15 @@ export interface ITableListState {
   filteredItems: IVisionListItem[];
   groups: IGroup[];
   columns: IColumn[];
+  currentPage: number;
+  itemsPerPage: number;
 }
 
 export const defaultState: ITableListState = {
   columns: [],
+  currentPage: 1,
   filteredGroups: [],
   filteredItems: [],
-  groups: []
+  groups: [],
+  itemsPerPage: 10
 };
